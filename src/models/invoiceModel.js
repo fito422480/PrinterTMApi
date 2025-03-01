@@ -22,7 +22,7 @@ async function getInvoices({ id, startDate, endDate, page = 1, limit = 100 }) {
   const queryBase = `
     SELECT ID, D_NUM_TIMB, D_FE_EMI_DE,D_EST, D_PUN_EXP, D_NUM_DOC, XML_RECEIVED, STATUS, RESULT_MSG, RESULT_STATUS
     FROM ${process.env.DB_SCHEMA}
-    WHERE RESULT_MSG IS NOT NULL
+    WHERE RESULT_MSG IS NULL
   `;
   const binds = {};
 
@@ -114,4 +114,109 @@ async function updateInvoice({ id, xml_received }) {
   }
 }
 
-module.exports = { getInvoices, updateInvoice };
+async function insertInvoice(invoiceData) {
+  const {
+    invoiceId = null, // Puede ser NULL
+    traceId = "",
+    documentNumber = 0,
+    dNumTimb = 0,
+    dEst = "",
+    dPunExp = "",
+    dNumDoc = null, // Puede ser NULL
+    dSerie = null, // Puede ser NULL
+    dFeEmiDe,
+    cdc = null, // Puede ser NULL
+    xmlReceived = "",
+    creationDate = new Date(),
+    xmlSent = null, // Puede ser NULL
+    status = "SENT",
+    resultStatus = null, // Puede ser NULL
+    resultMsg = null, // Puede ser NULL
+    dFeEmiDeBk,
+    retryTimes = 0,
+    generatedDeId = null,
+    invoiceStatus = null,
+    invoiceStatusMsg = null,
+    lendingUpdated = "N",
+    lendingUpdateStatus = null,
+    lendingMsg = null,
+    setResponseCode = null,
+    setResponseMsg = null,
+  } = invoiceData;
+
+  // Manejo dinámico de fechas
+  const dFeEmiDeClause = dFeEmiDe
+    ? "TO_DATE(:dFeEmiDe, 'YYYY-MM-DD HH24:MI:SS.FF')"
+    : "NULL";
+  const dFeEmiDeBkClause = dFeEmiDeBk
+    ? "TO_DATE(:dFeEmiDeBk, 'YYYY-MM-DD HH24:MI:SS.FF')"
+    : "NULL";
+
+  const query = `
+    INSERT INTO ${process.env.DB_SCHEMA} (
+      INVOICE_ID, TRACE_ID, DOCUMENT_NUMBER, D_NUM_TIMB, D_EST, D_PUNEXP,
+      D_NUM_DOC, D_SERIE, D_FE_EMI_DE, CDC, XML_RECEIVED, XML_SENT,
+      CREATION_DATE, STATUS, RETRY_TIMES, RESULT_STATUS, RESULT_MSG, GENERATED_DE_ID,
+      INVOICE_STATUS, INVOICE_STATUS_MSG, LENDING_UPDATED, LENDING_UPDATE_STATUS,
+      LENDING_MSG, SET_RESPONSE_CODE, SET_RESPONSE_MSG, "D_FE_EMI_DE_BK"
+    ) VALUES (
+      :invoiceId, :traceId, :documentNumber, :dNumTimb, :dEst, :dPunExp,
+      :dNumDoc, :dSerie, ${dFeEmiDeClause}, :cdc, :xmlReceived, :xmlSent,
+      :creationDate, :status, :retryTimes, :resultStatus, :resultMsg, :generatedDeId,
+      :invoiceStatus, :invoiceStatusMsg, :lendingUpdated, :lendingUpdateStatus,
+      :lendingMsg, :setResponseCode, :setResponseMsg, ${dFeEmiDeBkClause}
+    )
+  `;
+
+  const binds = {
+    invoiceId,
+    traceId,
+    documentNumber,
+    dNumTimb,
+    dEst,
+    dPunExp,
+    dNumDoc,
+    dSerie,
+    cdc,
+    xmlReceived,
+    creationDate,
+    xmlSent,
+    status,
+    retryTimes,
+    resultStatus,
+    resultMsg,
+    generatedDeId,
+    invoiceStatus,
+    invoiceStatusMsg,
+    lendingUpdated,
+    lendingUpdateStatus,
+    lendingMsg,
+    setResponseCode,
+    setResponseMsg,
+  };
+
+  // Agregar fechas solo si existen
+  if (dFeEmiDe) binds.dFeEmiDe = dFeEmiDe;
+  if (dFeEmiDeBk) binds.dFeEmiDeBk = dFeEmiDeBk;
+
+  let connection;
+  try {
+    console.log("Insertando factura con datos:", invoiceData);
+    connection = await getConnection();
+    await connection.execute(query, binds, { autoCommit: true });
+    return { message: "Factura B2B insertada exitosamente." };
+  } catch (error) {
+    console.error("Error insertando factura B2B:", error);
+    throw new Error("Error al crear factura B2B. Verifique los datos.");
+  } finally {
+    if (connection) {
+      try {
+        await connection.close();
+      } catch (closeError) {
+        console.error("Error cerrando conexión:", closeError);
+      }
+    }
+  }
+}
+
+module.exports = { getInvoices, updateInvoice, insertInvoice };

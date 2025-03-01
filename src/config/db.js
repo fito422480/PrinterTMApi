@@ -31,9 +31,11 @@ const createPool = async () => {
       user: process.env.DB_USER,
       password: dbPassword,
       connectString: process.env.DB_HOST,
-      poolMin: 5,
-      poolMax: 20,
-      poolIncrement: 5,
+      poolMin: 1,
+      poolMax: 10,
+      poolIncrement: 1,
+      poolTimeout: 60,
+      poolAlias: "default",
     });
     console.log("Pool creado exitosamente");
   } catch (error) {

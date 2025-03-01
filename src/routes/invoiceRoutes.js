@@ -1,5 +1,9 @@
 const express = require("express");
-const { getInvoices, updateInvoice } = require("../models/invoiceModel");
+const {
+  getInvoices,
+  updateInvoice,
+  insertInvoice,
+} = require("../models/invoiceModel");
 
 const router = express.Router();
 
@@ -73,6 +77,94 @@ router.put("/:id", async (req, res) => {
   } catch (error) {
     console.error("Error al actualizar la factura:", error);
     res.status(500).json({ error: "Error al actualizar la factura" });
+  }
+});
+
+// Ruta para insertar una nueva factura
+router.post("/", async (req, res) => {
+  const {
+    invoiceId,
+    traceId,
+    documentNumber,
+    dNumTimb,
+    dEst,
+    dPunExp,
+    dNumDoc,
+    dSerie,
+    dFeEmiDe,
+    cdc,
+    xmlReceived,
+    xmlSent,
+    status,
+    resultStatus,
+    resultMsg,
+    dFeEmiDeBk,
+  } = req.body;
+
+  // Validar campos obligatorios
+  const requiredFields = ["traceId", "dFeEmiDe", "xmlReceived", "status"];
+  const missingFields = requiredFields.filter((field) => !req.body[field]);
+
+  if (missingFields.length > 0) {
+    return res.status(400).json({
+      error: `Campos obligatorios faltantes: ${missingFields.join(", ")}`,
+      details:
+        "Los campos requeridos son: traceId, dFeEmiDe, xmlReceived y status",
+    });
+  }
+
+  // Validar formato de fechas
+  const dateValidations = [];
+  if (!isValidDate(dFeEmiDe)) {
+    dateValidations.push(
+      "dFeEmiDe con formato inválido (YYYY-MM-DD requerido)"
+    );
+  }
+  if (dFeEmiDeBk && !isValidDate(dFeEmiDeBk)) {
+    dateValidations.push(
+      "dFeEmiDeBk con formato inválido (YYYY-MM-DD requerido)"
+    );
+  }
+
+  if (dateValidations.length > 0) {
+    return res.status(400).json({
+      error: "Error de validación de fechas",
+      details: dateValidations,
+    });
+  }
+
+  try {
+    const result = await insertInvoice({
+      invoiceId: invoiceId || 0,
+      traceId,
+      documentNumber: documentNumber || 0,
+      dNumTimb: dNumTimb || 0,
+      dEst: dEst || "",
+      dPunExp: dPunExp || "",
+      dNumDoc: dNumDoc || 0,
+      dSerie: dSerie || "",
+      dFeEmiDe,
+      cdc: cdc || "",
+      xmlReceived,
+      xmlSent: xmlSent || "",
+      status,
+      resultStatus: resultStatus || "",
+      resultMsg: resultMsg || "",
+      dFeEmiDeBk,
+    });
+
+    res.status(201).json({
+      ...result,
+      insertedId: traceId, // Asumiendo que traceId actúa como identificador único
+      timestamp: new Date().toISOString(),
+    });
+  } catch (error) {
+    console.error("Error en inserción de las facturas:", error);
+    const statusCode = error.message.includes("existente") ? 409 : 500;
+    res.status(statusCode).json({
+      error: "Error en creación de factura",
+      details: error.message,
+    });
   }
 });
 
