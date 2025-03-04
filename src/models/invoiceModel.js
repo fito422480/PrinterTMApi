@@ -116,98 +116,58 @@ async function updateInvoice({ id, xml_received }) {
 
 async function insertInvoice(invoiceData) {
   const {
-    invoiceId = null, // Puede ser NULL
-    traceId = "",
-    documentNumber = 0,
-    dNumTimb = 0,
-    dEst = "",
-    dPunExp = "",
-    dNumDoc = null, // Puede ser NULL
-    dSerie = null, // Puede ser NULL
-    dFeEmiDe,
-    cdc = null, // Puede ser NULL
-    xmlReceived = "",
-    creationDate = new Date(),
-    xmlSent = null, // Puede ser NULL
-    status = "SENT",
-    resultStatus = null, // Puede ser NULL
-    resultMsg = null, // Puede ser NULL
-    dFeEmiDeBk,
-    retryTimes = 0,
-    generatedDeId = null,
-    invoiceStatus = null,
-    invoiceStatusMsg = null,
-    lendingUpdated = "N",
-    lendingUpdateStatus = null,
-    lendingMsg = null,
-    setResponseCode = null,
-    setResponseMsg = null,
+    invoiceId: invoiceId,
+    traceId = null,
+    requestId = null,
+    customerId = null,
+    invoiceOrigin = null,
+    dNumTimb = null,
+    dEst = null,
+    dPunExp = null,
+    dNumDoc = null,
+    dFeEmiDe = null,
+    xmlReceived = null,
+    creationDate = null,
+    status = null,
   } = invoiceData;
-
-  // Manejo dinámico de fechas
-  const dFeEmiDeClause = dFeEmiDe
-    ? "TO_DATE(:dFeEmiDe, 'YYYY-MM-DD HH24:MI:SS.FF')"
-    : "NULL";
-  const dFeEmiDeBkClause = dFeEmiDeBk
-    ? "TO_DATE(:dFeEmiDeBk, 'YYYY-MM-DD HH24:MI:SS.FF')"
-    : "NULL";
 
   const query = `
     INSERT INTO ${process.env.DB_SCHEMA} (
-      INVOICE_ID, TRACE_ID, DOCUMENT_NUMBER, D_NUM_TIMB, D_EST, D_PUNEXP,
-      D_NUM_DOC, D_SERIE, D_FE_EMI_DE, CDC, XML_RECEIVED, XML_SENT,
-      CREATION_DATE, STATUS, RETRY_TIMES, RESULT_STATUS, RESULT_MSG, GENERATED_DE_ID,
-      INVOICE_STATUS, INVOICE_STATUS_MSG, LENDING_UPDATED, LENDING_UPDATE_STATUS,
-      LENDING_MSG, SET_RESPONSE_CODE, SET_RESPONSE_MSG, "D_FE_EMI_DE_BK"
-    ) VALUES (
-      :invoiceId, :traceId, :documentNumber, :dNumTimb, :dEst, :dPunExp,
-      :dNumDoc, :dSerie, ${dFeEmiDeClause}, :cdc, :xmlReceived, :xmlSent,
-      :creationDate, :status, :retryTimes, :resultStatus, :resultMsg, :generatedDeId,
-      :invoiceStatus, :invoiceStatusMsg, :lendingUpdated, :lendingUpdateStatus,
-      :lendingMsg, :setResponseCode, :setResponseMsg, ${dFeEmiDeBkClause}
-    )
-  `;
+    ID, TRACE_ID, REQUEST_ID, CUSTOMER_ID, INVOICE_ORIGIN, D_NUM_TIMB, D_EST, D_PUN_EXP, D_NUM_DOC,  
+    D_FE_EMI_DE, XML_RECEIVED, CREATION_DATE, STATUS) 
+    VALUES (
+      :invoiceId, :traceId, :requestId, :customerId, :invoiceOrigin, :dNumTimb, :dEst, :dPunExp, :dNumDoc,
+      TO_TIMESTAMP(:dFeEmiDe, 'YYYY-MM-DD HH24:MI:SS.FF6'), :xmlReceived, TO_TIMESTAMP(:creationDate, 'YYYY-MM-DD HH24:MI:SS.FF6'), :status
+    )`;
 
   const binds = {
     invoiceId,
     traceId,
-    documentNumber,
+    requestId,
+    customerId,
+    invoiceOrigin,
     dNumTimb,
     dEst,
     dPunExp,
     dNumDoc,
-    dSerie,
-    cdc,
+    dFeEmiDe,
     xmlReceived,
     creationDate,
-    xmlSent,
     status,
-    retryTimes,
-    resultStatus,
-    resultMsg,
-    generatedDeId,
-    invoiceStatus,
-    invoiceStatusMsg,
-    lendingUpdated,
-    lendingUpdateStatus,
-    lendingMsg,
-    setResponseCode,
-    setResponseMsg,
   };
 
   // Agregar fechas solo si existen
   if (dFeEmiDe) binds.dFeEmiDe = dFeEmiDe;
-  if (dFeEmiDeBk) binds.dFeEmiDeBk = dFeEmiDeBk;
 
   let connection;
   try {
     console.log("Insertando factura con datos:", invoiceData);
     connection = await getConnection();
     await connection.execute(query, binds, { autoCommit: true });
-    return { message: "Factura B2B insertada exitosamente." };
+    return { message: "Factura insertada exitosamente." };
   } catch (error) {
-    console.error("Error insertando factura B2B:", error);
-    throw new Error("Error al crear factura B2B. Verifique los datos.");
+    console.error("Error insertando factura:", error);
+    throw new Error("Error al crear factura. Verifique los datos.");
   } finally {
     if (connection) {
       try {

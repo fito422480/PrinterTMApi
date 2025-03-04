@@ -1,4 +1,5 @@
 const express = require("express");
+const multer = require("multer");
 const {
   getInvoices,
   updateInvoice,
@@ -85,44 +86,65 @@ router.post("/", async (req, res) => {
   const {
     invoiceId,
     traceId,
-    documentNumber,
+    requestId,
+    customerId,
+    invoiceOrigin,
     dNumTimb,
     dEst,
     dPunExp,
     dNumDoc,
-    dSerie,
     dFeEmiDe,
-    cdc,
     xmlReceived,
-    xmlSent,
+    creationDate,
     status,
-    resultStatus,
-    resultMsg,
-    dFeEmiDeBk,
   } = req.body;
-
+  // Convertir campos numéricos
   // Validar campos obligatorios
-  const requiredFields = ["traceId", "dFeEmiDe", "xmlReceived", "status"];
+  const requiredFields = [
+    "invoiceId",
+    "traceId",
+    "customerId",
+    "invoiceOrigin",
+    "dNumTimb",
+    "dEst",
+    "dPunExp",
+    "dNumDoc",
+    "dFeEmiDe",
+    "xmlReceived",
+    "creationDate",
+    "status",
+  ];
+
   const missingFields = requiredFields.filter((field) => !req.body[field]);
 
   if (missingFields.length > 0) {
     return res.status(400).json({
       error: `Campos obligatorios faltantes: ${missingFields.join(", ")}`,
       details:
-        "Los campos requeridos son: traceId, dFeEmiDe, xmlReceived y status",
+        "Los campos requeridos son: invoiceid, traceId, invoiceOrigin, dEst, dPunExp, dNumDoc, dFeEmiDE, xmlReceived, creationDate y status.",
     });
   }
 
-  // Validar formato de fechas
-  const dateValidations = [];
-  if (!isValidDate(dFeEmiDe)) {
-    dateValidations.push(
-      "dFeEmiDe con formato inválido (YYYY-MM-DD requerido)"
-    );
+  // Función para validar el formato TIMESTAMP de Oracle
+  function isValidTimestamp(dateStr) {
+    // Expresión regular para el formato YYYY-MM-DD HH:mm:ss.ffffff
+    const timestampRegex =
+      /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01]) (?:[01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]\.\d{6}$/;
+
+    if (!timestampRegex.test(dateStr)) {
+      return false;
+    }
+
+    // Convertir a formato ISO 8601 para validación de fecha
+    const isoDate = dateStr.replace(" ", "T").replace(/\.(\d{3})\d{3}$/, ".$1");
+    return !isNaN(new Date(isoDate).getTime());
   }
-  if (dFeEmiDeBk && !isValidDate(dFeEmiDeBk)) {
+
+  // Validación en tu controlador
+  const dateValidations = [];
+  if (!isValidTimestamp(dFeEmiDe)) {
     dateValidations.push(
-      "dFeEmiDeBk con formato inválido (YYYY-MM-DD requerido)"
+      "dFeEmiDe: Formato inválido. Se requiere TIMESTAMP 'YYYY-MM-DD HH24:MI:SS.FF6'"
     );
   }
 
@@ -135,27 +157,24 @@ router.post("/", async (req, res) => {
 
   try {
     const result = await insertInvoice({
-      invoiceId: invoiceId || 0,
+      invoiceId: invoiceId || null,
       traceId,
-      documentNumber: documentNumber || 0,
-      dNumTimb: dNumTimb || 0,
-      dEst: dEst || "",
-      dPunExp: dPunExp || "",
-      dNumDoc: dNumDoc || 0,
-      dSerie: dSerie || "",
+      requestId,
+      customerId,
+      invoiceOrigin,
+      dNumTimb,
+      dEst,
+      dPunExp,
+      dNumDoc,
       dFeEmiDe,
-      cdc: cdc || "",
       xmlReceived,
-      xmlSent: xmlSent || "",
+      creationDate,
       status,
-      resultStatus: resultStatus || "",
-      resultMsg: resultMsg || "",
-      dFeEmiDeBk,
     });
 
     res.status(201).json({
       ...result,
-      insertedId: traceId, // Asumiendo que traceId actúa como identificador único
+      insertedId: invoiceId, // Aquí puedes asumir que invoiceId actúa como identificador único
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
