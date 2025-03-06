@@ -2,6 +2,8 @@ const express = require("express");
 const multer = require("multer");
 const {
   getInvoices,
+  getInvoicesStats,
+  getInvoicesAnalytics,
   updateInvoice,
   insertInvoice,
 } = require("../models/invoiceModel");
@@ -58,6 +60,32 @@ router.get("/", async (req, res) => {
   } catch (error) {
     console.error("Error al obtener el o las facturas:", error);
     res.status(500).json({ error: "Error al obtener el o las facturas" });
+  }
+});
+
+// Nueva ruta para obtener estadísticas de facturas
+router.get("/analytics", async (req, res) => {
+  try {
+    const anali = await getInvoicesAnalytics();
+    res.json(anali);
+    console.log("Estadísticas de facturas obtenidas exitosamente", anali);
+  } catch (error) {
+    console.error(
+      "Error al obtener analítica de facturas:",
+      error.message || error
+    );
+    console.error("Detalles del error:", error.stack || error);
+    res.status(500).json({ error: "Error al obtener analítica." });
+  }
+});
+
+router.get("/stats", async (req, res) => {
+  try {
+    const stats = await getInvoicesStats();
+    res.json(stats);
+  } catch (error) {
+    console.error("Error al obtener estadísticas de facturas:", error);
+    res.status(500).json({ error: "Error al obtener estadísticas." });
   }
 });
 
@@ -129,7 +157,7 @@ router.post("/", async (req, res) => {
   function isValidTimestamp(dateStr) {
     // Expresión regular para el formato YYYY-MM-DD HH:mm:ss.ffffff
     const timestampRegex =
-      /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01]) (?:[01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]\.\d{6}$/;
+      /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01]) (?:[01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]\.\d{3,6}$/;
 
     if (!timestampRegex.test(dateStr)) {
       return false;

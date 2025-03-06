@@ -74,6 +74,95 @@ async function getInvoices({ id, startDate, endDate, page = 1, limit = 100 }) {
   }
 }
 
+async function getInvoicesStats() {
+  const cacheKey = "invoices_stats";
+
+  // Retornar datos desde la caché si existen
+  const cachedData = cache.get(cacheKey);
+  if (cachedData) {
+    return cachedData;
+  }
+
+  const query = `SELECT sent, approved, rejected, errors FROM MUNDO2.V_INVOICE_STATS`;
+
+  let connection;
+  try {
+    connection = await getConnection();
+    const result = await connection.execute(query, [], {
+      outFormat: oracle.OUT_FORMAT_OBJECT,
+    });
+
+    if (!result.rows.length) {
+      throw new Error("No se encontraron datos en la vista.");
+    }
+
+    const stats = result.rows[0]; // Solo hay una fila
+    cache.set(cacheKey, stats); // Cachear el resultado
+
+    return stats;
+  } catch (error) {
+    console.error("Error al obtener estadísticas de facturas:", error);
+    throw new Error("Error al obtener estadísticas de facturas.");
+  } finally {
+    if (connection) {
+      try {
+        await connection.close();
+      } catch (closeError) {
+        console.error("Error al cerrar la conexión:", closeError);
+      }
+    }
+  }
+}
+
+async function getInvoicesAnalytics() {
+  const cacheKey = "invoices_analytics";
+  const cachedData = cache.get(cacheKey);
+
+  if (cachedData) {
+    return cachedData;
+  }
+
+  const query = `SELECT "MONTH", UV, PV, AMT FROM MUNDO2.V_INVOICE_ANALYTICS`;
+
+  let connection;
+  try {
+    connection = await getConnection();
+    const result = await connection.execute(query, [], {
+      outFormat: oracle.OUT_FORMAT_OBJECT,
+    });
+
+    if (!result.rows.length) {
+      throw new Error("No se encontraron datos en la vista.");
+    }
+
+    // Aquí transformamos los resultados para devolverlos como un objeto
+    const analytics = result.rows.map((row) => ({
+      month: row.MONTH,
+      UV: row.UV,
+      PV: row.PV,
+      AMT: row.AMT,
+    }));
+
+    cache.set(cacheKey, analytics); // Guardamos los resultados en caché
+
+    return analytics;
+  } catch (error) {
+    console.error(
+      "Error al ejecutar la consulta de analítica de facturas:",
+      error.message || error
+    );
+    throw new Error("Error al obtener analítica de facturas.");
+  } finally {
+    if (connection) {
+      try {
+        await connection.close();
+      } catch (closeError) {
+        console.error("Error al cerrar la conexión:", closeError);
+      }
+    }
+  }
+}
+
 async function updateInvoice({ id, xml_received }) {
   if (!id) {
     throw new Error("ID es obligatorio para actualizar la factura.");
@@ -179,4 +268,10 @@ async function insertInvoice(invoiceData) {
   }
 }
 
-module.exports = { getInvoices, updateInvoice, insertInvoice };
+module.exports = {
+  getInvoices,
+  getInvoicesStats,
+  getInvoicesAnalytics,
+  updateInvoice,
+  insertInvoice,
+};
