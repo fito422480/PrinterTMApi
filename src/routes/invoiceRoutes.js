@@ -57,6 +57,7 @@ router.get("/", async (req, res) => {
 
     const invoices = await getInvoices(filters);
     res.json(invoices);
+    console.log("Facturas obtenidas exitosamente", invoices);
   } catch (error) {
     console.error("Error al obtener el o las facturas:", error);
     res.status(500).json({ error: "Error al obtener el o las facturas" });
@@ -83,6 +84,7 @@ router.get("/stats", async (req, res) => {
   try {
     const stats = await getInvoicesStats();
     res.json(stats);
+    console.log("Analisis de facturas obtenidas exitosamente por mes", stats);
   } catch (error) {
     console.error("Error al obtener estadísticas de facturas:", error);
     res.status(500).json({ error: "Error al obtener estadísticas." });

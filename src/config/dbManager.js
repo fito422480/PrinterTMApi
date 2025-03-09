@@ -1,32 +1,23 @@
 // src/config/dbManager.js
-const { createPool, getConnection } = require("./db");
+const dbWorkerPool = require("./dbWorkerPool");
 
 class DBManager {
   constructor() {
-    this.initialize();
-  }
-
-  async initialize() {
-    try {
-      await createPool();
-      console.log("Pool de conexiones creado");
-    } catch (error) {
-      console.error("Error inicializando el pool:", error);
-      process.exit(1);
-    }
+    // El pool de workers ya se inicializa automáticamente
+    console.log("DBManager inicializado con worker pool");
   }
 
   async query(sql, params = []) {
-    let connection;
     try {
-      connection = await getConnection();
-      const result = await connection.execute(sql, params);
-      return result.rows;
+      const result = await dbWorkerPool.executeQuery(sql, params);
+      return result;
     } catch (error) {
       throw new Error(`Error en la consulta: ${error.message}`);
-    } finally {
-      if (connection) await connection.close();
     }
+  }
+
+  async shutdown() {
+    return dbWorkerPool.terminate();
   }
 }
 

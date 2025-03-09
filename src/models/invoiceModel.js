@@ -1,5 +1,5 @@
-const oracle = require("oracledb");
-const { getConnection } = require("../config/db");
+// src/models/invoiceModel.js
+const dbManager = require("../config/dbManager");
 const NodeCache = require("node-cache");
 require("dotenv").config();
 
@@ -20,7 +20,7 @@ async function getInvoices({ id, startDate, endDate, page = 1, limit = 100 }) {
 
   // Construcción de consulta base con paginación y filtros dinámicos
   const queryBase = `
-    SELECT ID, D_NUM_TIMB, D_FE_EMI_DE,D_EST, D_PUN_EXP, D_NUM_DOC, XML_RECEIVED, STATUS, RESULT_MSG, RESULT_STATUS
+    SELECT ID, D_NUM_TIMB, D_FE_EMI_DE, D_EST, D_PUN_EXP, D_NUM_DOC, XML_RECEIVED, STATUS, RESULT_MSG, RESULT_STATUS
     FROM ${process.env.DB_SCHEMA}
     WHERE RESULT_MSG IS NULL
   `;
@@ -50,27 +50,15 @@ async function getInvoices({ id, startDate, endDate, page = 1, limit = 100 }) {
   binds.offset = (page - 1) * limit;
   binds.limit = limit;
 
-  let connection;
   try {
-    connection = await getConnection();
-    const result = await connection.execute(query, binds, {
-      outFormat: oracle.OUT_FORMAT_OBJECT,
-    });
+    const rows = await dbManager.query(query, binds);
 
     // Cachear los resultados y retornar
-    cache.set(cacheKey, result.rows);
-    return result.rows;
+    cache.set(cacheKey, rows);
+    return rows;
   } catch (error) {
     console.error("Error al ejecutar la consulta de invoices:", error);
     throw new Error("Error al obtener invoices. Intente nuevamente.");
-  } finally {
-    if (connection) {
-      try {
-        await connection.close();
-      } catch (closeError) {
-        console.error("Error al cerrar la conexión:", closeError);
-      }
-    }
   }
 }
 
@@ -85,32 +73,20 @@ async function getInvoicesStats() {
 
   const query = `SELECT sent, approved, rejected, errors FROM MUNDO2.V_INVOICE_STATS`;
 
-  let connection;
   try {
-    connection = await getConnection();
-    const result = await connection.execute(query, [], {
-      outFormat: oracle.OUT_FORMAT_OBJECT,
-    });
+    const rows = await dbManager.query(query, []);
 
-    if (!result.rows.length) {
+    if (!rows.length) {
       throw new Error("No se encontraron datos en la vista.");
     }
 
-    const stats = result.rows[0]; // Solo hay una fila
+    const stats = rows[0]; // Solo hay una fila
     cache.set(cacheKey, stats); // Cachear el resultado
 
     return stats;
   } catch (error) {
     console.error("Error al obtener estadísticas de facturas:", error);
     throw new Error("Error al obtener estadísticas de facturas.");
-  } finally {
-    if (connection) {
-      try {
-        await connection.close();
-      } catch (closeError) {
-        console.error("Error al cerrar la conexión:", closeError);
-      }
-    }
   }
 }
 
@@ -124,19 +100,15 @@ async function getInvoicesAnalytics() {
 
   const query = `SELECT "MONTH", UV, PV, AMT FROM MUNDO2.V_INVOICE_ANALYTICS`;
 
-  let connection;
   try {
-    connection = await getConnection();
-    const result = await connection.execute(query, [], {
-      outFormat: oracle.OUT_FORMAT_OBJECT,
-    });
+    const rows = await dbManager.query(query, []);
 
-    if (!result.rows.length) {
+    if (!rows.length) {
       throw new Error("No se encontraron datos en la vista.");
     }
 
-    // Aquí transformamos los resultados para devolverlos como un objeto
-    const analytics = result.rows.map((row) => ({
+    // Transformamos los resultados para devolverlos como un objeto
+    const analytics = rows.map((row) => ({
       month: row.MONTH,
       UV: row.UV,
       PV: row.PV,
@@ -152,14 +124,6 @@ async function getInvoicesAnalytics() {
       error.message || error
     );
     throw new Error("Error al obtener analítica de facturas.");
-  } finally {
-    if (connection) {
-      try {
-        await connection.close();
-      } catch (closeError) {
-        console.error("Error al cerrar la conexión:", closeError);
-      }
-    }
   }
 }
 
@@ -167,7 +131,10 @@ async function updateInvoice({ id, xml_received }) {
   if (!id) {
     throw new Error("ID es obligatorio para actualizar la factura.");
   }
+
+  // Truncar XML si es muy largo
   xml_received = xml_received.substring(0, 2000);
+
   const query = `
     UPDATE ${process.env.DB_SCHEMA}
     SET STATUS = 'READY', XML_RECEIVED = :xml_received
@@ -176,15 +143,14 @@ async function updateInvoice({ id, xml_received }) {
 
   const binds = {
     id,
-    xml_received, //: { val: xml_received, type: oracle.CLOB },
+    xml_received,
   };
 
-  let connection;
   try {
-    connection = await getConnection();
-    const result = await connection.execute(query, binds, { autoCommit: true });
+    const result = await dbManager.query(query, binds);
 
-    if (result.rowsAffected === 0) {
+    // En este caso result será un objeto que contiene rowsAffected
+    if (!result || result.length === 0 || result.rowsAffected === 0) {
       throw new Error("No se encontró ninguna factura con el ID especificado.");
     }
 
@@ -192,20 +158,12 @@ async function updateInvoice({ id, xml_received }) {
   } catch (error) {
     console.error("Error al actualizar la factura:", error);
     throw new Error("Error al actualizar la factura. Intente nuevamente.");
-  } finally {
-    if (connection) {
-      try {
-        await connection.close();
-      } catch (closeError) {
-        console.error("Error al cerrar la conexión:", closeError);
-      }
-    }
   }
 }
 
 async function insertInvoice(invoiceData) {
   const {
-    invoiceId: invoiceId,
+    invoiceId,
     traceId = null,
     requestId = null,
     customerId = null,
@@ -245,26 +203,13 @@ async function insertInvoice(invoiceData) {
     status,
   };
 
-  // Agregar fechas solo si existen
-  if (dFeEmiDe) binds.dFeEmiDe = dFeEmiDe;
-
-  let connection;
   try {
     console.log("Insertando factura con datos:", invoiceData);
-    connection = await getConnection();
-    await connection.execute(query, binds, { autoCommit: true });
+    await dbManager.query(query, binds);
     return { message: "Factura insertada exitosamente." };
   } catch (error) {
     console.error("Error insertando factura:", error);
     throw new Error("Error al crear factura. Verifique los datos.");
-  } finally {
-    if (connection) {
-      try {
-        await connection.close();
-      } catch (closeError) {
-        console.error("Error cerrando conexión:", closeError);
-      }
-    }
   }
 }
 
