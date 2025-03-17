@@ -94,20 +94,30 @@ router.get("/stats", async (req, res) => {
 // Ruta para actualizar una factura específica
 router.put("/:id", async (req, res) => {
   const { id } = req.params;
-  const { xml_received } = req.body;
+  const numericId = Number(id);
+  const xmlData = String(req.body.xml_received); // Convertimos a string
 
-  if (!id || !xml_received) {
+  if (!numericId || !xmlData) {
     return res.status(400).json({
       error: "ID y xml_received son campos obligatorios.",
     });
   }
 
+  console.log("ID:", numericId);
+  console.log("Tipo de xml_received:", typeof xmlData);
+  console.log("Contenido xml_received:", xmlData.substring(0, 100000) + "..."); // Muestra solo una parte del XML para evitar logs gigantes
+
   try {
-    const result = await updateInvoice({ id, xml_received });
+    const result = await updateInvoice({
+      id: numericId,
+      xml_received: xmlData,
+    });
     res.json(result);
   } catch (error) {
     console.error("Error al actualizar la factura:", error);
-    res.status(500).json({ error: "Error al actualizar la factura" });
+    res
+      .status(500)
+      .json({ error: error.message || "Error al actualizar la factura" });
   }
 });
 

@@ -74,10 +74,16 @@ async function executeQuery(sql, params = [], taskId) {
     connection = await connectionPool.getConnection();
     const result = await connection.execute(sql, params);
 
+    // Un objeto de resultado completo para cualquier tipo de consulta
     parentPort.postMessage({
       type: "result",
       taskId,
-      data: result.rows,
+      data: {
+        rows: result.rows || [],
+        rowsAffected: result.rowsAffected || 0,
+        outBinds: result.outBinds || null,
+        metaData: result.metaData || null,
+      },
     });
   } catch (error) {
     parentPort.postMessage({
