@@ -22,7 +22,7 @@ class DBWorkerPool {
 
   createWorker() {
     const workerId = this.nextWorkerId++;
-    const worker = new Worker(path.join(__dirname, "dbWorker.js"), {
+    const worker = new Worker(path.join(__dirname, "../config/dbworker.js"), {
       workerData: { workerId },
     });
 

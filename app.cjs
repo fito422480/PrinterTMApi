@@ -32,7 +32,7 @@ if (cluster.isMaster && process.env.ENABLE_CLUSTERING === "true") {
 
   app.use(
     cors({
-      origin: process.env.URL_FRONTEND || "http://localhost:3000",
+      origin: "*",
       methods: ["GET", "POST", "PUT", "DELETE"],
       allowedHeaders: ["Content-Type", "Authorization"],
     })

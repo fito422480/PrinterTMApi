@@ -7,7 +7,7 @@ require("dotenv").config();
 const cache = new NodeCache({ stdTTL: 300 });
 
 // Función para obtener invoices con paginación y filtros
-async function getInvoices({ id, startDate, endDate, page = 1, limit = 100 }) {
+async function getInvoices({ id, startDate, endDate, page = 1, limit = 1000 }) {
   const cacheKey = `invoices:${id || "all"}:${startDate || "all"}:${
     endDate || "all"
   }:page:${page}:limit:${limit}`;
@@ -21,8 +21,7 @@ async function getInvoices({ id, startDate, endDate, page = 1, limit = 100 }) {
   // Construcción de consulta base - sin FETCH FIRST
   const queryBase = `
     SELECT ID, D_NUM_TIMB, D_FE_EMI_DE, D_EST, D_PUN_EXP, D_NUM_DOC, XML_RECEIVED, STATUS, RESULT_MSG, RESULT_STATUS
-    FROM ${process.env.DB_SCHEMA}
-    WHERE RESULT_MSG IS NULL
+    FROM ${process.env.DB_SCHEMA}.V_MFS_INVOICE_ALL_ERRORS
   `;
   const binds = {};
 
