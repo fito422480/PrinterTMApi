@@ -252,43 +252,24 @@ async function updateInvoice({ id, xml_received }) {
 
 async function insertInvoice(invoiceData) {
   const {
-    invoiceId,
     traceId = null,
     requestId = null,
-    customerId = null,
     invoiceOrigin = null,
-    dNumTimb = null,
-    dEst = null,
-    dPunExp = null,
-    dNumDoc = null,
-    dFeEmiDe = null,
     xmlReceived = null,
-    creationDate = null,
     status = null,
   } = invoiceData;
 
   const query = `
     INSERT INTO ${process.env.DB_SCHEMA} (
-    ID, TRACE_ID, REQUEST_ID, CUSTOMER_ID, INVOICE_ORIGIN, D_NUM_TIMB, D_EST, D_PUN_EXP, D_NUM_DOC,  
-    D_FE_EMI_DE, XML_RECEIVED, CREATION_DATE, STATUS) 
+    ID, TRACE_ID, REQUEST_ID, INVOICE_ORIGIN, XML_RECEIVED, CREATION_DATE, STATUS)
     VALUES (
-      :invoiceId, :traceId, :requestId, :customerId, :invoiceOrigin, :dNumTimb, :dEst, :dPunExp, :dNumDoc,
-      TO_TIMESTAMP(:dFeEmiDe, 'YYYY-MM-DD HH24:MI:SS.FF6'), :xmlReceived, TO_TIMESTAMP(:creationDate, 'YYYY-MM-DD HH24:MI:SS.FF6'), :status
-    )`;
+      MFS_INVOICE_ID_SQ.NEXTVAL, :traceId, :requestId, :invoiceOrigin, :xmlReceived, SYSDATE, :status)`;
 
   const binds = {
-    invoiceId,
     traceId,
     requestId,
-    customerId,
     invoiceOrigin,
-    dNumTimb,
-    dEst,
-    dPunExp,
-    dNumDoc,
-    dFeEmiDe,
     xmlReceived,
-    creationDate,
     status,
   };
 
