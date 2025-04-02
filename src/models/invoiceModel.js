@@ -221,7 +221,7 @@ async function updateInvoice({ id, xml_received }) {
     typeof xml_received === "string" ? xml_received.substring(0, 100000) : "";
 
   const query = `
-    UPDATE ${process.env.DB_SCHEMA}
+    UPDATE ${process.env.DB_SCHEMA}.${process.env.DB_TABLE}
     SET STATUS = 'READY', XML_RECEIVED = :xml_received
     WHERE ID = :id
   `;
@@ -249,6 +249,10 @@ async function updateInvoice({ id, xml_received }) {
   }
 }
 
+function cleanXml(xml) {
+  return xml ? xml.replace(/[\n\r\t]+/g, " ").trim() : xml;
+}
+
 async function insertInvoice(invoiceData) {
   const {
     traceId = null,
@@ -258,8 +262,11 @@ async function insertInvoice(invoiceData) {
     status = null,
   } = invoiceData;
 
+  // LIMPIAR XML ANTES DE INSERTARLO
+  const cleanedXml = cleanXml(xmlReceived);
+
   const query = `
-    INSERT INTO ${process.env.DB_SCHEMA} (
+    INSERT INTO ${process.env.DB_SCHEMA}.${process.env.DB_TABLE} (
     ID, TRACE_ID, REQUEST_ID, INVOICE_ORIGIN, XML_RECEIVED, CREATION_DATE, STATUS)
     VALUES (
       MFS_INVOICE_ID_SQ.NEXTVAL, :traceId, :requestId, :invoiceOrigin, :xmlReceived, SYSDATE, :status)`;
@@ -268,7 +275,7 @@ async function insertInvoice(invoiceData) {
     traceId,
     requestId,
     invoiceOrigin,
-    xmlReceived,
+    xmlReceived: cleanedXml, // Aquí va la versión limpia del XML
     status,
   };
 
