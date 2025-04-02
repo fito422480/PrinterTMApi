@@ -101,7 +101,7 @@ async function getInvoicesStats() {
     return cachedData;
   }
 
-  const query = `SELECT sent, approved, rejected, errors FROM MUNDO2.V_INVOICE_STATS`;
+  const query = `SELECT sent, approved, rejected, errors FROM ${process.env.DB_SCHEMA}.V_INVOICE_STATS`;
 
   try {
     console.log("Ejecutando consulta para estadísticas de facturas:", query);
@@ -155,7 +155,7 @@ async function getInvoicesAnalytics() {
     return cachedData;
   }
 
-  const query = `SELECT "MONTH", UV, PV, AMT FROM MUNDO2.V_INVOICE_ANALYTICS`;
+  const query = `SELECT "MONTH", UV, PV, AMT FROM ${process.env.DB_SCHEMA}.V_INVOICE_ANALYTICS`;
 
   try {
     console.log("Ejecutando consulta para analytics de facturas:", query);
