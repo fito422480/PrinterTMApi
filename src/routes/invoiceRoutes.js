@@ -138,36 +138,6 @@ router.post("/", async (req, res) => {
     });
   }
 
-  // // Función para validar el formato TIMESTAMP de Oracle
-  // function isValidTimestamp(dateStr) {
-  //   // Expresión regular para el formato YYYY-MM-DD HH:mm:ss.ffffff
-  //   const timestampRegex =
-  //     /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01]) (?:[01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]\.\d{3,6}$/;
-
-  //   if (!timestampRegex.test(dateStr)) {
-  //     return false;
-  //   }
-
-  //   // Convertir a formato ISO 8601 para validación de fecha
-  //   const isoDate = dateStr.replace(" ", "T").replace(/\.(\d{3})\d{3}$/, ".$1");
-  //   return !isNaN(new Date(isoDate).getTime());
-  // }
-
-  // Validación en tu controlador
-  // const dateValidations = [];
-  // if (!isValidTimestamp(dFeEmiDe)) {
-  //   dateValidations.push(
-  //     "dFeEmiDe: Formato inválido. Se requiere TIMESTAMP 'YYYY-MM-DD HH24:MI:SS.FF6'"
-  //   );
-  // }
-
-  // if (dateValidations.length > 0) {
-  //   return res.status(400).json({
-  //     error: "Error de validación de fechas",
-  //     details: dateValidations,
-  //   });
-  // }
-
   try {
     const result = await insertInvoice({
       traceId,
