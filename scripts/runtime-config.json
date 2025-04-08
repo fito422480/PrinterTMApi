@@ -1,0 +1,6 @@
+{
+  "WORKER_COUNT": "6",
+  "URL_FRONTEND": "http://mfs-invoice-web-ui.prod.sec.telecel.net.py/",
+  "DB_HOST": "10.255.8.20:1521/KIRA",
+  "persist": true
+}

@@ -1,22 +1,32 @@
 version: "3.8"
 services:
-  backendapi1:  # Primera instancia
+  backendapi1:
     image: backendapi:1.0.1
     build:
       context: .
       dockerfile: Dockerfile.api
-    env_file:
-      - ./.env
+    container_name: backendapi1
     restart: unless-stopped
-    network_mode: host
+    ports:
+      - "9500:9500"
     volumes:
       - ./logs:/app/logs
+      - ./runtime-config:/app/config
     environment:
-      - LD_LIBRARY_PATH=/opt/oracle/instantclient_12_2:$LD_LIBRARY_PATH
+      - LD_LIBRARY_PATH=/opt/oracle/instantclient_12_2
       - TNS_ADMIN=/opt/oracle/instantclient_12_2
-      - PORT=9500  # Especifica el puerto para esta instancia
+      - PORT=9500
+      - INSTANT_CLIENT_DIR=/opt/oracle/instantclient_12_2
+      - DB_USER=mundo2
+      - DB_PASSWORD=Tigo2014!
+      - DB_HOST=10.255.8.19:1521/KIRA
+      - DB_SCHEMA=MUNDO2
+      - DB_TABLE=MFS_INVOICE
+      - URL_FRONTEND=http://mfs-invoice-web-ui.qa.sec.telecel.net.py/
+      - WORKER_COUNT=4
+      - API_KEY=dev-api-key-secure-123
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9500/invoices"]
+      test: ["CMD", "curl", "-f", "http://localhost:9500/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -26,23 +36,39 @@ services:
         max-size: "10m"
         max-file: "3"
 
-  backendapi2:  # Segunda instancia
+  backendapi2:
     image: backendapi:1.0.1
     build:
       context: .
       dockerfile: Dockerfile.api
-    env_file:
-      - ./.env
+    container_name: backendapi2
     restart: unless-stopped
-    network_mode: host
+    ports:
+      - "9501:9500"
     volumes:
       - ./logs:/app/logs
+      - ./runtime-config:/app/config
     environment:
-      - LD_LIBRARY_PATH=/opt/oracle/instantclient_12_2:$LD_LIBRARY_PATH
+      - LD_LIBRARY_PATH=/opt/oracle/instantclient_12_2
       - TNS_ADMIN=/opt/oracle/instantclient_12_2
-      - PORT=9501  # Puerto diferente para la segunda instancia
+      - PORT=9500
+      - INSTANT_CLIENT_DIR=/opt/oracle/instantclient_12_2
+      - DB_USER=mundo2
+      - DB_PASSWORD=Tigo2014!
+      - DB_HOST=10.255.8.19:1521/KIRA
+      - DB_SCHEMA=MUNDO2
+      - DB_TABLE=MFS_INVOICE
+      - URL_FRONTEND=http://mfs-invoice-web-ui.qa.sec.telecel.net.py/
+      - WORKER_COUNT=4
+      - API_KEY=dev-api-key-secure-123
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9501/invoices"]
+      test:
+        [
+          "CMD",
+          "curl",
+          "-f",
+          "http://mfs-invoice-web-api.qa.sec.telecel.net.py",
+        ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -54,16 +80,38 @@ services:
 
   nginx:
     image: nginx:1.21-alpine
+    container_name: backendapi_nginx
     depends_on:
       - backendapi1
       - backendapi2
-    network_mode: host
+    ports:
+      - "9502:80"
     volumes:
       - ./nginx.conf:/etc/nginx/nginx.conf:ro
-    command: >
-      /bin/sh -c "while ! nc -z localhost 9500 && ! nc -z localhost 9501; do sleep 1; done; nginx -g 'daemon off;'"
+    restart: unless-stopped
     logging:
       driver: "json-file"
       options:
         max-size: "10m"
         max-file: "3"
+
+  config-updater:
+    image: curlimages/curl:7.88.1
+    container_name: config_updater
+    depends_on:
+      - nginx
+    volumes:
+      - ./scripts:/scripts
+    entrypoint:
+      [
+        "/bin/sh",
+        "-c",
+        "while true; do sleep 300; sh /scripts/check-config-updates.sh; done",
+      ]
+    restart: unless-stopped
+    environment:
+      - API_ENDPOINT=http://backendapi_nginx/
+
+volumes:
+  runtime-config:
+    driver: local
