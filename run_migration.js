@@ -1,0 +1,51 @@
+require("dotenv").config();
+const dbManager = require("./src/config/dbManager");
+
+const SCHEMA = process.env.DB_SCHEMA || 'MUNDO2';
+const TABLE = process.env.DB_TABLE || 'MFS_INVOICE';
+
+const commands = [
+    // 2025
+    `ALTER TABLE ${SCHEMA}.${TABLE} ADD PARTITION P_2025_07 VALUES LESS THAN (TO_DATE('2025-08-01 00:00:00', 'YYYY-MM-DD HH24:MI:SS'))`,
+    `ALTER TABLE ${SCHEMA}.${TABLE} ADD PARTITION P_2025_08 VALUES LESS THAN (TO_DATE('2025-09-01 00:00:00', 'YYYY-MM-DD HH24:MI:SS'))`,
+    `ALTER TABLE ${SCHEMA}.${TABLE} ADD PARTITION P_2025_09 VALUES LESS THAN (TO_DATE('2025-10-01 00:00:00', 'YYYY-MM-DD HH24:MI:SS'))`,
+    `ALTER TABLE ${SCHEMA}.${TABLE} ADD PARTITION P_2025_10 VALUES LESS THAN (TO_DATE('2025-11-01 00:00:00', 'YYYY-MM-DD HH24:MI:SS'))`,
+    `ALTER TABLE ${SCHEMA}.${TABLE} ADD PARTITION P_2025_11 VALUES LESS THAN (TO_DATE('2025-12-01 00:00:00', 'YYYY-MM-DD HH24:MI:SS'))`,
+    `ALTER TABLE ${SCHEMA}.${TABLE} ADD PARTITION P_2025_12 VALUES LESS THAN (TO_DATE('2026-01-01 00:00:00', 'YYYY-MM-DD HH24:MI:SS'))`,
+    // 2026
+    `ALTER TABLE ${SCHEMA}.${TABLE} ADD PARTITION P_2026_01 VALUES LESS THAN (TO_DATE('2026-02-01 00:00:00', 'YYYY-MM-DD HH24:MI:SS'))`,
+    `ALTER TABLE ${SCHEMA}.${TABLE} ADD PARTITION P_2026_02 VALUES LESS THAN (TO_DATE('2026-03-01 00:00:00', 'YYYY-MM-DD HH24:MI:SS'))`,
+    `ALTER TABLE ${SCHEMA}.${TABLE} ADD PARTITION P_2026_03 VALUES LESS THAN (TO_DATE('2026-04-01 00:00:00', 'YYYY-MM-DD HH24:MI:SS'))`,
+    `ALTER TABLE ${SCHEMA}.${TABLE} ADD PARTITION P_2026_04 VALUES LESS THAN (TO_DATE('2026-05-01 00:00:00', 'YYYY-MM-DD HH24:MI:SS'))`,
+    `ALTER TABLE ${SCHEMA}.${TABLE} ADD PARTITION P_2026_05 VALUES LESS THAN (TO_DATE('2026-06-01 00:00:00', 'YYYY-MM-DD HH24:MI:SS'))`,
+    `ALTER TABLE ${SCHEMA}.${TABLE} ADD PARTITION P_2026_06 VALUES LESS THAN (TO_DATE('2026-07-01 00:00:00', 'YYYY-MM-DD HH24:MI:SS'))`,
+    `ALTER TABLE ${SCHEMA}.${TABLE} ADD PARTITION P_2026_07 VALUES LESS THAN (TO_DATE('2026-08-01 00:00:00', 'YYYY-MM-DD HH24:MI:SS'))`,
+    `ALTER TABLE ${SCHEMA}.${TABLE} ADD PARTITION P_2026_08 VALUES LESS THAN (TO_DATE('2026-09-01 00:00:00', 'YYYY-MM-DD HH24:MI:SS'))`,
+    `ALTER TABLE ${SCHEMA}.${TABLE} ADD PARTITION P_2026_09 VALUES LESS THAN (TO_DATE('2026-10-01 00:00:00', 'YYYY-MM-DD HH24:MI:SS'))`,
+    `ALTER TABLE ${SCHEMA}.${TABLE} ADD PARTITION P_2026_10 VALUES LESS THAN (TO_DATE('2026-11-01 00:00:00', 'YYYY-MM-DD HH24:MI:SS'))`,
+    `ALTER TABLE ${SCHEMA}.${TABLE} ADD PARTITION P_2026_11 VALUES LESS THAN (TO_DATE('2026-12-01 00:00:00', 'YYYY-MM-DD HH24:MI:SS'))`,
+    `ALTER TABLE ${SCHEMA}.${TABLE} ADD PARTITION P_2026_12 VALUES LESS THAN (TO_DATE('2027-01-01 00:00:00', 'YYYY-MM-DD HH24:MI:SS'))`
+];
+
+async function runMigration() {
+    console.log(`Starting migration to add partitions for ${SCHEMA}.${TABLE}...`);
+    
+    for (const sql of commands) {
+        try {
+            console.log(`Executing: ${sql}`);
+            await dbManager.query(sql);
+            console.log("Success.");
+        } catch (error) {
+            if (error.message && error.message.includes("ORA-14074")) {
+                console.log("Partition already exists (skipped).");
+            } else {
+                console.error("Error executing command:", error);
+            }
+        }
+    }
+    
+    console.log("Migration finished.");
+    setTimeout(() => process.exit(0), 1000);
+}
+
+runMigration();
