@@ -38,14 +38,65 @@ if (cluster.isMaster && process.env.ENABLE_CLUSTERING === "true") {
     })
   );
 
-  app.use(express.json({ limit: "500mb" }));
-  app.use(
-    express.urlencoded({
+  // Reemplazo de express.json para manejar caracteres de control no escapados
+  app.use(express.text({ type: 'application/json', limit: '500mb' }));
+  app.use(express.urlencoded({
       limit: "500mb",
       extended: true,
       parameterLimit: 100000,
-    })
-  );
+  }));
+
+  // Middleware personalizado para limpiar y parsear JSON
+  app.use((req, res, next) => {
+      if (req.headers['content-type'] && req.headers['content-type'].includes('application/json') && typeof req.body === 'string') {
+          try {
+              req.body = JSON.parse(req.body);
+          } catch (e) {
+              console.warn("JSON malformado detectado, intentando sanitizar...");
+              try {
+                  // Function to escape control characters only inside strings
+                  const sanitizeJson = (str) => {
+                      let inString = false;
+                      let escaped = false;
+                      let result = '';
+                      for (let i = 0; i < str.length; i++) {
+                          const char = str[i];
+                          // Toggle string state on unescaped quote
+                          if (char === '"' && !escaped) {
+                              inString = !inString;
+                          }
+                          
+                          if (inString) {
+                              if (char === '\t') result += '\\t';
+                              else if (char === '\n') result += '\\n';
+                              else if (char === '\r') result += '\\r';
+                              else result += char;
+                          } else {
+                              result += char;
+                          }
+                          
+                          // Handle escape sequences
+                          if (char === '\\' && !escaped) escaped = true;
+                          else escaped = false;
+                      }
+                      return result;
+                  };
+
+                  const sanitized = sanitizeJson(req.body);
+                  req.body = JSON.parse(sanitized);
+                  console.log("JSON sanitizado exitosamente.");
+              } catch (e2) {
+                  console.error("No se pudo reparar el JSON:", e2.message);
+                  return res.status(400).json({ 
+                      error: "Invalid JSON format", 
+                      details: "El cuerpo de la petición contiene JSON inválido y no pudo ser reparado.",
+                      originalError: e.message 
+                  });
+              }
+          }
+      }
+      next();
+  });
 
   // Middleware de caché
   app.use((req, res, next) => {

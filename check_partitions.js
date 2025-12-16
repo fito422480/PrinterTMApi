@@ -17,12 +17,32 @@ async function checkPartitions() {
       ORDER BY PARTITION_NAME DESC
     `;
     
+
+    console.log("Querying DB time...");
+    const timeResult = await dbManager.query("SELECT SYSDATE FROM DUAL");
+    console.log("DB SYSDATE:", timeResult && timeResult.rows ? timeResult.rows[0] : timeResult);
+
+    console.log("Querying keys...");
     const keyQuery = `
       SELECT COLUMN_NAME, COLUMN_POSITION 
       FROM ALL_PART_KEY_COLUMNS 
       WHERE OWNER = '${schema}' 
       AND NAME = '${table}'
     `;
+    
+    const subKeyQuery = `
+      SELECT COLUMN_NAME, COLUMN_POSITION 
+      FROM ALL_SUBPART_KEY_COLUMNS 
+      WHERE OWNER = '${schema}' 
+      AND NAME = '${table}'
+    `;
+
+    const subKeys = await dbManager.query(subKeyQuery);
+    if(subKeys.rows && subKeys.rows.length > 0) {
+        console.log('\nSubpartition Keys:');
+        console.table(subKeys.rows);
+    }
+
 
     console.log("Querying keys...");
     const keys = await dbManager.query(keyQuery);
@@ -35,15 +55,11 @@ async function checkPartitions() {
 
     console.log('\nPartitions (Top 20):');
     if (partitions.rows) {
-        // We only show metadata, HIGH_VALUE might be buffer or empty depending on driver
-        console.table(partitions.rows.slice(0, 20));
-        
-        // Let's print details of the first few to see HIGH_VALUE text if possible
-        partitions.rows.slice(0, 5).forEach(r => {
-           console.log(`Partition: ${r.PARTITION_NAME}, High Value: ${r.HIGH_VALUE}`); 
+        partitions.rows.slice(0, 20).forEach((r, i) => {
+           console.log(`[${i}] Partition: ${r.PARTITION_NAME}, High Value: ${r.HIGH_VALUE}`); 
         });
     } else {
-        console.log(partitions);
+        console.log("No partitions found or empty rows.");
     }
     
   } catch (error) {
