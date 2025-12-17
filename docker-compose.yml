@@ -22,7 +22,7 @@ services:
       - DB_HOST=10.255.8.19:1521/KIRA
       - DB_SCHEMA=MUNDO2
       - DB_TABLE=MFS_INVOICE
-      - URL_FRONTEND=http://mfs-invoice-web-ui.qa.sec.telecel.net.py/
+      - URL_FRONTEND=http://localhost:3000
       - WORKER_COUNT=4
       - API_KEY=dev-api-key-secure-123
     healthcheck:
@@ -41,6 +41,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.api
+
     container_name: backendapi2
     restart: unless-stopped
     ports:
@@ -58,7 +59,7 @@ services:
       - DB_HOST=10.255.8.19:1521/KIRA
       - DB_SCHEMA=MUNDO2
       - DB_TABLE=MFS_INVOICE
-      - URL_FRONTEND=http://mfs-invoice-web-ui.qa.sec.telecel.net.py/
+      - URL_FRONTEND=http://localhost:3000
       - WORKER_COUNT=4
       - API_KEY=dev-api-key-secure-123
     healthcheck:
@@ -67,7 +68,7 @@ services:
           "CMD",
           "curl",
           "-f",
-          "http://mfs-invoice-web-api.qa.sec.telecel.net.py",
+          "http://localhost:9502",
         ]
       interval: 30s
       timeout: 10s
